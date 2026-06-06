@@ -1,0 +1,491 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ACADEMY_ADMIN
+  COACH
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  PLUS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  TRIAL
+}
+
+enum AcademyStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  ON_LEAVE
+}
+
+enum CoachAttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+  OVERDUE
+  CANCELLED
+}
+
+enum NotificationType {
+  FEE_DUE
+  FEE_OVERDUE
+  COACH_ABSENT
+  NEW_STUDENT
+  SUBSCRIPTION_EXPIRY
+  ATTRIBUTE_REQUEST
+  ATTENDANCE_REMINDER
+  PERFORMANCE_REMINDER
+  GENERAL
+}
+
+enum AttributeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  RESTORE
+  LOGIN
+  LOGOUT
+  EXPORT
+  IMPORT
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  role          UserRole
+  academyId     String?   @map("academy_id")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  academy              Academy?              @relation(fields: [academyId], references: [id])
+  refreshTokens        RefreshToken[]
+  coach                Coach?
+  notifications        Notification[]
+  auditLogs            AuditLog[]
+  attributeRequests    PerformanceAttributeRequest[] @relation("RequestedBy")
+  reviewedRequests     PerformanceAttributeRequest[] @relation("ReviewedBy")
+
+  @@index([academyId])
+  @@index([role])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Academy {
+  id                  String             @id @default(uuid())
+  name                String
+  slug                String             @unique
+  email               String
+  phone               String?
+  address             String?            @db.Text
+  logoUrl             String?            @map("logo_url")
+  status              AcademyStatus      @default(ACTIVE)
+  subscriptionPlan    SubscriptionPlan   @default(FREE) @map("subscription_plan")
+  subscriptionStatus  SubscriptionStatus @default(ACTIVE) @map("subscription_status")
+  subscriptionStart   DateTime?          @map("subscription_start")
+  subscriptionEnd     DateTime?          @map("subscription_end")
+  maxStudents         Int                @default(50) @map("max_students")
+  maxCoaches          Int                @default(5) @map("max_coaches")
+  registrationFee     Decimal            @default(0) @map("registration_fee") @db.Decimal(10, 2)
+  attendanceRadiusM   Int                @default(100) @map("attendance_radius_m")
+  receiptPrefix       String             @default("RCP") @map("receipt_prefix")
+  receiptTemplate     String?            @map("receipt_template") @db.Text
+  theme               String             @default("light")
+  notificationPrefs   Json?              @map("notification_prefs")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  users               User[]
+  sports              Sport[]
+  membershipPlans     MembershipPlan[]
+  batches             Batch[]
+  coaches             Coach[]
+  students            Student[]
+  feePayments         FeePayment[]
+  coachAttendances    CoachAttendance[]
+  studentAttendances  StudentAttendance[]
+  performanceAttrs    PerformanceAttribute[]
+  performanceScores   PerformanceScore[]
+  attrRequests        PerformanceAttributeRequest[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  subscriptionHistory SubscriptionHistory[]
+
+  @@map("academies")
+}
+
+model SubscriptionHistory {
+  id        String             @id @default(uuid())
+  academyId String             @map("academy_id")
+  plan      SubscriptionPlan
+  status    SubscriptionStatus
+  startDate DateTime           @map("start_date")
+  endDate   DateTime?          @map("end_date")
+  amount    Decimal?           @db.Decimal(10, 2)
+  notes     String?            @db.Text
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  academy Academy @relation(fields: [academyId], references: [id], onDelete: Cascade)
+
+  @@index([academyId])
+  @@map("subscription_history")
+}
+
+model Sport {
+  id          String   @id @default(uuid())
+  academyId   String   @map("academy_id")
+  name        String
+  description String?  @db.Text
+  monthlyFee  Decimal  @map("monthly_fee") @db.Decimal(10, 2)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  academy  Academy  @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  batches  Batch[]
+  students Student[]
+
+  @@unique([academyId, name])
+  @@index([academyId])
+  @@map("sports")
+}
+
+model MembershipPlan {
+  id         String   @id @default(uuid())
+  academyId  String   @map("academy_id")
+  name       String
+  duration   Int
+  multiplier Decimal  @db.Decimal(5, 2)
+  isActive   Boolean  @default(true) @map("is_active")
+  isCustom   Boolean  @default(false) @map("is_custom")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  academy  Academy  @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  students Student[]
+
+  @@unique([academyId, name])
+  @@index([academyId])
+  @@map("membership_plans")
+}
+
+model Coach {
+  id          String    @id @default(uuid())
+  academyId   String    @map("academy_id")
+  userId      String    @unique @map("user_id")
+  phone       String?
+  address     String?   @db.Text
+  dateOfBirth DateTime? @map("date_of_birth")
+  joinDate    DateTime  @default(now()) @map("join_date")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  academy            Academy             @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batchAssignments   BatchCoach[]
+  coachAttendances   CoachAttendance[]
+  performanceScores  PerformanceScore[]
+
+  @@index([academyId])
+  @@map("coaches")
+}
+
+model Student {
+  id                String    @id @default(uuid())
+  academyId         String    @map("academy_id")
+  sportId           String?   @map("sport_id")
+  membershipPlanId  String?   @map("membership_plan_id")
+  batchId           String?   @map("batch_id")
+  firstName         String    @map("first_name")
+  lastName          String    @map("last_name")
+  email             String?
+  phone             String?
+  dateOfBirth       DateTime? @map("date_of_birth")
+  gender            String?
+  address           String?   @db.Text
+  guardianName      String?   @map("guardian_name")
+  guardianPhone     String?   @map("guardian_phone")
+  guardianEmail     String?   @map("guardian_email")
+  guardianRelation  String?   @map("guardian_relation")
+  enrollmentDate    DateTime  @default(now()) @map("enrollment_date")
+  registrationFee   Decimal   @default(0) @map("registration_fee") @db.Decimal(10, 2)
+  additionalCharges Decimal   @default(0) @map("additional_charges") @db.Decimal(10, 2)
+  discount          Decimal   @default(0) @db.Decimal(10, 2)
+  isActive          Boolean   @default(true) @map("is_active")
+  deletedAt         DateTime? @map("deleted_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  academy            Academy             @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  sport              Sport?              @relation(fields: [sportId], references: [id])
+  membershipPlan     MembershipPlan?     @relation(fields: [membershipPlanId], references: [id])
+  batch              Batch?              @relation(fields: [batchId], references: [id])
+  feePayments        FeePayment[]
+  studentAttendances StudentAttendance[]
+  performanceScores  PerformanceScore[]
+
+  @@index([academyId])
+  @@index([academyId, deletedAt])
+  @@index([batchId])
+  @@map("students")
+}
+
+model Batch {
+  id        String   @id @default(uuid())
+  academyId String   @map("academy_id")
+  sportId   String   @map("sport_id")
+  name      String
+  startTime String   @map("start_time")
+  endTime   String   @map("end_time")
+  capacity  Int      @default(20)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  academy            Academy             @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  sport              Sport               @relation(fields: [sportId], references: [id])
+  coaches            BatchCoach[]
+  students           Student[]
+  studentAttendances StudentAttendance[]
+
+  @@unique([academyId, name, sportId])
+  @@index([academyId])
+  @@map("batches")
+}
+
+model BatchCoach {
+  id        String   @id @default(uuid())
+  batchId   String   @map("batch_id")
+  coachId   String   @map("coach_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  batch Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, coachId])
+  @@map("batch_coaches")
+}
+
+model FeePayment {
+  id            String        @id @default(uuid())
+  academyId     String        @map("academy_id")
+  studentId     String        @map("student_id")
+  receiptNumber String        @unique @map("receipt_number")
+  amount        Decimal       @db.Decimal(10, 2)
+  sportFee      Decimal       @map("sport_fee") @db.Decimal(10, 2)
+  planMultiplier Decimal      @map("plan_multiplier") @db.Decimal(5, 2)
+  registrationFee Decimal     @map("registration_fee") @db.Decimal(10, 2)
+  additionalCharges Decimal   @map("additional_charges") @db.Decimal(10, 2)
+  discount      Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+  dueDate       DateTime      @map("due_date")
+  paidDate      DateTime?     @map("paid_date")
+  paymentMethod String?       @map("payment_method")
+  notes         String?       @db.Text
+  periodStart   DateTime      @map("period_start")
+  periodEnd     DateTime      @map("period_end")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  academy Academy @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([academyId])
+  @@index([academyId, status])
+  @@index([studentId])
+  @@map("fee_payments")
+}
+
+model CoachAttendance {
+  id        String                @id @default(uuid())
+  academyId String                @map("academy_id")
+  coachId   String                @map("coach_id")
+  date      DateTime              @db.Date
+  status    CoachAttendanceStatus
+  checkInAt DateTime?             @map("check_in_at")
+  latitude  Float?
+  longitude Float?
+  notes     String?
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  academy Academy @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  coach   Coach   @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@unique([coachId, date])
+  @@index([academyId])
+  @@map("coach_attendances")
+}
+
+model StudentAttendance {
+  id        String           @id @default(uuid())
+  academyId String           @map("academy_id")
+  studentId String           @map("student_id")
+  batchId   String           @map("batch_id")
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  markedBy  String           @map("marked_by")
+  isLocked  Boolean          @default(true) @map("is_locked")
+  notes     String?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  academy Academy @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, batchId, date])
+  @@index([academyId])
+  @@index([batchId, date])
+  @@map("student_attendances")
+}
+
+model PerformanceAttribute {
+  id          String   @id @default(uuid())
+  academyId   String   @map("academy_id")
+  name        String
+  description String?  @db.Text
+  sportId     String?  @map("sport_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  academy Academy            @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  scores  PerformanceScore[]
+
+  @@unique([academyId, name])
+  @@index([academyId])
+  @@map("performance_attributes")
+}
+
+model PerformanceAttributeRequest {
+  id          String                   @id @default(uuid())
+  academyId   String                   @map("academy_id")
+  requestedBy String                   @map("requested_by")
+  reviewedBy  String?                  @map("reviewed_by")
+  name        String
+  description String?                  @db.Text
+  sportId     String?                  @map("sport_id")
+  status      AttributeRequestStatus   @default(PENDING)
+  reviewNote  String?                  @map("review_note") @db.Text
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  reviewedAt  DateTime?                @map("reviewed_at")
+
+  academy   Academy @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  requester User    @relation("RequestedBy", fields: [requestedBy], references: [id])
+  reviewer  User?   @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+
+  @@index([academyId])
+  @@index([status])
+  @@map("performance_attribute_requests")
+}
+
+model PerformanceScore {
+  id          String   @id @default(uuid())
+  academyId   String   @map("academy_id")
+  studentId   String   @map("student_id")
+  attributeId String   @map("attribute_id")
+  coachId     String   @map("coach_id")
+  score       Int
+  notes       String?  @db.Text
+  scoredAt    DateTime @default(now()) @map("scored_at")
+
+  academy   Academy              @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  student   Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attribute PerformanceAttribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  coach     Coach                @relation(fields: [coachId], references: [id])
+
+  @@index([academyId])
+  @@index([studentId])
+  @@index([attributeId])
+  @@map("performance_scores")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  academyId String?          @map("academy_id")
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  isRead    Boolean          @default(false) @map("is_read")
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  academy Academy? @relation(fields: [academyId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([academyId])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  academyId  String?     @map("academy_id")
+  userId     String      @map("user_id")
+  action     AuditAction
+  entity     String
+  entityId   String?     @map("entity_id")
+  oldValues  Json?       @map("old_values")
+  newValues  Json?       @map("new_values")
+  ipAddress  String?     @map("ip_address")
+  userAgent  String?     @map("user_agent") @db.Text
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  academy Academy? @relation(fields: [academyId], references: [id], onDelete: SetNull)
+  user    User     @relation(fields: [userId], references: [id])
+
+  @@index([academyId])
+  @@index([userId])
+  @@index([entity])
+  @@map("audit_logs")
+}
