@@ -4,6 +4,7 @@ import { sendSuccess } from '../utils/response';
 import { authenticate } from '../middleware/auth';
 import { AuthRequest } from '../types';
 import { prisma } from '../lib/prisma';
+import { paramId } from '../utils/params';
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { user } = req as AuthRequest;
     const notification = await prisma.notification.updateMany({
-      where: { id: req.params.id, userId: user!.userId },
+      where: { id: paramId(req), userId: user!.userId },
       data: { isRead: true },
     });
     sendSuccess(res, { updated: notification.count });

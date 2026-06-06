@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
+import { UserRole, PaymentStatus } from '@prisma/client';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess, sendPaginated } from '../utils/response';
 import { authenticate, requireRoles } from '../middleware/auth';
@@ -10,7 +10,9 @@ import { prisma } from '../lib/prisma';
 import { withTenant, assertTenantMatch, getPagination } from '../utils/tenantQuery';
 import { calculateFinalFee } from '../utils/feeCalculator';
 import { generateReceiptNumber } from '../services/auth.service';
+import { generateReceiptPDF } from '../services/receipt.service';
 import { NotFoundError } from '../utils/errors';
+import { paramId } from '../utils/params';
 
 const router = Router();
 
@@ -25,7 +27,7 @@ router.get(
     const status = req.query.status as string | undefined;
 
     const where = withTenant(academyId!, {
-      ...(status && { status: status as 'PENDING' | 'PAID' | 'OVERDUE' }),
+      ...(status && { status: status as PaymentStatus }),
     });
 
     const [payments, total] = await Promise.all([
@@ -50,28 +52,28 @@ router.get(
 
     const [totalRevenue, monthlyRevenue, pending, overdue] = await Promise.all([
       prisma.feePayment.aggregate({
-        where: withTenant(academyId!, { status: 'PAID' }),
+        where: withTenant(academyId!, { status: PaymentStatus.PAID }),
         _sum: { amount: true },
       }),
       prisma.feePayment.aggregate({
-        where: withTenant(academyId!, { status: 'PAID', paidDate: { gte: monthStart } }),
+        where: withTenant(academyId!, { status: PaymentStatus.PAID, paidDate: { gte: monthStart } }),
         _sum: { amount: true },
       }),
       prisma.feePayment.aggregate({
-        where: withTenant(academyId!, { status: 'PENDING' }),
+        where: withTenant(academyId!, { status: PaymentStatus.PENDING }),
         _sum: { amount: true },
       }),
       prisma.feePayment.aggregate({
-        where: withTenant(academyId!, { status: 'OVERDUE' }),
+        where: withTenant(academyId!, { status: PaymentStatus.OVERDUE }),
         _sum: { amount: true },
       }),
     ]);
 
     sendSuccess(res, {
-      totalRevenue: Number(totalRevenue._sum.amount || 0),
-      monthlyRevenue: Number(monthlyRevenue._sum.amount || 0),
-      pendingDues: Number(pending._sum.amount || 0),
-      overdueDues: Number(overdue._sum.amount || 0),
+      totalRevenue: Number(totalRevenue._sum?.amount || 0),
+      monthlyRevenue: Number(monthlyRevenue._sum?.amount || 0),
+      pendingDues: Number(pending._sum?.amount || 0),
+      overdueDues: Number(overdue._sum?.amount || 0),
     });
   })
 );
@@ -146,15 +148,28 @@ router.post(
     const { academyId } = req as AuthRequest;
     const { paymentMethod } = z.object({ paymentMethod: z.string().optional() }).parse(req.body);
 
-    const payment = await prisma.feePayment.findUnique({ where: { id: req.params.id } });
+    const id = paramId(req);
+    const payment = await prisma.feePayment.findUnique({ where: { id } });
     if (!payment) throw new NotFoundError();
     assertTenantMatch(payment.academyId, academyId);
 
     const updated = await prisma.feePayment.update({
-      where: { id: req.params.id },
-      data: { status: 'PAID', paidDate: new Date(), paymentMethod },
+      where: { id },
+      data: { status: PaymentStatus.PAID, paidDate: new Date(), paymentMethod },
     });
     sendSuccess(res, updated, 'Payment collected');
+  })
+);
+
+router.get(
+  '/:id/receipt',
+  asyncHandler(async (req, res) => {
+    const { academyId } = req as AuthRequest;
+    const id = paramId(req);
+    const pdf = await generateReceiptPDF(id, academyId!);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=receipt-${id}.pdf`);
+    res.send(pdf);
   })
 );
 

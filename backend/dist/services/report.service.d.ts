@@ -158,7 +158,13 @@ export declare function getCoachReport(filters: ReportFilters): Promise<({
     dateOfBirth: Date | null;
     joinDate: Date;
 })[]>;
-export declare function getDueFeesReport(filters: ReportFilters): Promise<{
+export declare function getDueFeesReport(filters: ReportFilters): Promise<({
+    student: {
+        firstName: string;
+        lastName: string;
+        phone: string | null;
+    };
+} & {
     id: string;
     academyId: string;
     createdAt: Date;
@@ -178,7 +184,7 @@ export declare function getDueFeesReport(filters: ReportFilters): Promise<{
     notes: string | null;
     periodStart: Date;
     periodEnd: Date;
-}[]>;
+})[]>;
 export declare function toCSV(rows: Record<string, unknown>[], columns: string[]): string;
 export declare function toExcel(sheetName: string, rows: Record<string, unknown>[], columns: {
     header: string;

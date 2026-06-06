@@ -11,6 +11,7 @@ import { getPlanLimits } from '../services/subscription.service';
 import { hashPassword } from '../services/auth.service';
 import { getPagination } from '../utils/tenantQuery';
 import { NotFoundError } from '../utils/errors';
+import { paramId } from '../utils/params';
 
 const router = Router();
 
@@ -108,7 +109,7 @@ router.get(
   resolveTenant,
   asyncHandler(async (req, res) => {
     const { user, academyId } = req as AuthRequest;
-    const id = user!.role === UserRole.SUPER_ADMIN ? req.params.id : academyId!;
+    const id = user!.role === UserRole.SUPER_ADMIN ? paramId(req) : academyId!;
 
     const academy = await prisma.academy.findUnique({
       where: { id },
@@ -125,7 +126,7 @@ router.patch(
   asyncHandler(async (req, res) => {
     const status = z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).parse(req.body.status);
     const academy = await prisma.academy.update({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
       data: { status: status as AcademyStatus },
     });
     sendSuccess(res, academy, 'Academy status updated');
@@ -145,7 +146,7 @@ router.patch(
 
     const limits = getPlanLimits(body.plan as SubscriptionPlan);
     const academy = await prisma.academy.update({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
       data: {
         subscriptionPlan: body.plan as SubscriptionPlan,
         maxStudents: limits.maxStudents,

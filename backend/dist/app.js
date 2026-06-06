@@ -26,6 +26,8 @@ const report_routes_1 = __importDefault(require("./routes/report.routes"));
 const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes"));
 const settings_routes_1 = __importDefault(require("./routes/settings.routes"));
 const import_routes_1 = __importDefault(require("./routes/import.routes"));
+const audit_routes_1 = __importDefault(require("./routes/audit.routes"));
+const subscription_routes_1 = __importDefault(require("./routes/subscription.routes"));
 const app = (0, express_1.default)();
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({ origin: config_1.config.frontendUrl, credentials: true }));
@@ -57,6 +59,8 @@ app.use('/api/reports', report_routes_1.default);
 app.use('/api/dashboard', dashboard_routes_1.default);
 app.use('/api/settings', settings_routes_1.default);
 app.use('/api/import', import_routes_1.default);
+app.use('/api/audit-logs', audit_routes_1.default);
+app.use('/api/subscription', subscription_routes_1.default);
 app.use(errorHandler_1.errorHandler);
 exports.default = app;
 //# sourceMappingURL=app.js.map

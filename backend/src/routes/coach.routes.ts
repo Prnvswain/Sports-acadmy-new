@@ -11,6 +11,7 @@ import { withTenant, assertTenantMatch, getPagination } from '../utils/tenantQue
 import { hashPassword } from '../services/auth.service';
 import { checkCoachLimit } from '../services/subscription.service';
 import { NotFoundError } from '../utils/errors';
+import { paramId } from '../utils/params';
 
 const router = Router();
 
@@ -88,7 +89,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
     const coach = await prisma.coach.findUnique({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
       include: {
         user: { select: { firstName: true, lastName: true, email: true } },
         batchAssignments: { include: { batch: true } },
@@ -107,12 +108,12 @@ router.patch(
   requireRoles(UserRole.ACADEMY_ADMIN),
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
-    const coach = await prisma.coach.findUnique({ where: { id: req.params.id } });
+    const coach = await prisma.coach.findUnique({ where: { id: paramId(req) } });
     if (!coach) throw new NotFoundError();
     assertTenantMatch(coach.academyId, academyId);
 
     const body = z.object({ phone: z.string().optional(), address: z.string().optional(), isActive: z.boolean().optional() }).parse(req.body);
-    const updated = await prisma.coach.update({ where: { id: req.params.id }, data: body });
+    const updated = await prisma.coach.update({ where: { id: paramId(req) }, data: body });
     sendSuccess(res, updated);
   })
 );

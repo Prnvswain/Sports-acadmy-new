@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SubscriptionWidget } from '@/components/SubscriptionBanner';
 
 export function SettingsPage() {
   const qc = useQueryClient();
@@ -24,6 +25,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Settings</h2>
+      <SubscriptionWidget />
       <Card>
         <CardHeader><CardTitle>Academy Profile</CardTitle></CardHeader>
         <CardContent>

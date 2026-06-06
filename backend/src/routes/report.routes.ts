@@ -51,7 +51,8 @@ router.get(
       ]);
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename=students.csv');
-      return res.send(csv);
+      res.send(csv);
+      return;
     }
 
     sendSuccess(res, data);

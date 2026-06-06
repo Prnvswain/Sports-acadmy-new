@@ -10,6 +10,7 @@ const tenant_1 = require("../middleware/tenant");
 const prisma_1 = require("../lib/prisma");
 const tenantQuery_1 = require("../utils/tenantQuery");
 const errors_1 = require("../utils/errors");
+const params_1 = require("../utils/params");
 const router = (0, express_1.Router)();
 const schema = zod_1.z.object({
     name: zod_1.z.string().min(1),
@@ -37,12 +38,12 @@ router.post('/', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), (0, 
 }));
 router.patch('/:id', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
-    const existing = await prisma_1.prisma.membershipPlan.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma_1.prisma.membershipPlan.findUnique({ where: { id: (0, params_1.paramId)(req) } });
     if (!existing)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_1.assertTenantMatch)(existing.academyId, academyId);
     const plan = await prisma_1.prisma.membershipPlan.update({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
         data: schema.partial().parse(req.body),
     });
     (0, response_1.sendSuccess)(res, plan);

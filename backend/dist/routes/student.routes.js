@@ -13,6 +13,7 @@ const tenantQuery_1 = require("../utils/tenantQuery");
 const subscription_service_1 = require("../services/subscription.service");
 const feeCalculator_1 = require("../utils/feeCalculator");
 const errors_1 = require("../utils/errors");
+const params_1 = require("../utils/params");
 const router = (0, express_1.Router)();
 const createSchema = zod_1.z.object({
     firstName: zod_1.z.string().min(1),
@@ -81,7 +82,7 @@ router.post('/', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), (0, 
 router.get('/:id', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN, client_1.UserRole.COACH), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
     const student = await prisma_1.prisma.student.findUnique({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
         include: {
             sport: true,
             batch: true,
@@ -102,13 +103,13 @@ router.get('/:id', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN, cli
 }));
 router.patch('/:id', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
-    const existing = await prisma_1.prisma.student.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma_1.prisma.student.findUnique({ where: { id: (0, params_1.paramId)(req) } });
     if (!existing)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_1.assertTenantMatch)(existing.academyId, academyId);
     const body = createSchema.partial().parse(req.body);
     const student = await prisma_1.prisma.student.update({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
         data: {
             ...body,
             dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : undefined,
@@ -118,25 +119,25 @@ router.patch('/:id', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), 
 }));
 router.delete('/:id', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
-    const existing = await prisma_1.prisma.student.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma_1.prisma.student.findUnique({ where: { id: (0, params_1.paramId)(req) } });
     if (!existing)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_1.assertTenantMatch)(existing.academyId, academyId);
     await prisma_1.prisma.student.update({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
         data: { deletedAt: new Date(), isActive: false },
     });
     (0, response_1.sendSuccess)(res, null, 'Student soft deleted');
 }));
 router.post('/:id/restore', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
-    const existing = await prisma_1.prisma.student.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma_1.prisma.student.findUnique({ where: { id: (0, params_1.paramId)(req) } });
     if (!existing)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_1.assertTenantMatch)(existing.academyId, academyId);
     await (0, subscription_service_1.checkStudentLimit)(academyId);
     const student = await prisma_1.prisma.student.update({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
         data: { deletedAt: null, isActive: true },
     });
     (0, response_1.sendSuccess)(res, student, 'Student restored');

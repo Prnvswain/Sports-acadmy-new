@@ -4,6 +4,8 @@ import { DataTable } from '@/components/DataTable';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
 
 export function FeesPage() {
   const { data: dashboard } = useQuery({
@@ -35,6 +37,11 @@ export function FeesPage() {
           { key: 'amount', header: 'Amount', render: (r) => formatCurrency(Number(r.amount)) },
           { key: 'status', header: 'Status', render: (r) => <Badge variant={r.status === 'PAID' ? 'default' : r.status === 'OVERDUE' ? 'destructive' : 'secondary'}>{r.status as string}</Badge> },
           { key: 'dueDate', header: 'Due Date', render: (r) => formatDate(r.dueDate as string) },
+          { key: 'receipt', header: '', render: (r) => r.status === 'PAID' ? (
+            <Button size="sm" variant="ghost" onClick={() => window.open(`/api/fees/${r.id}/receipt`, '_blank')}>
+              <Download className="h-4 w-4" /> PDF
+            </Button>
+          ) : null },
         ]}
       />
     </div>

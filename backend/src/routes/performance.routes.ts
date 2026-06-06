@@ -11,6 +11,7 @@ import { prisma } from '../lib/prisma';
 import { withTenant, assertTenantMatch } from '../utils/tenantQuery';
 import { notifyAcademyAdmins } from '../services/notification.service';
 import { NotFoundError, ValidationError } from '../utils/errors';
+import { paramId } from '../utils/params';
 
 const router = Router();
 
@@ -95,14 +96,14 @@ router.patch(
     }).parse(req.body);
 
     const request = await prisma.performanceAttributeRequest.findUnique({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
     });
     if (!request) throw new NotFoundError();
     assertTenantMatch(request.academyId, academyId);
 
     const updated = await prisma.$transaction(async (tx) => {
       const reqUpdated = await tx.performanceAttributeRequest.update({
-        where: { id: req.params.id },
+        where: { id: paramId(req) },
         data: {
           status: body.status,
           reviewNote: body.reviewNote,
@@ -164,12 +165,13 @@ router.get(
   requireRoles(UserRole.ACADEMY_ADMIN, UserRole.COACH),
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
-    const student = await prisma.student.findUnique({ where: { id: req.params.studentId } });
+    const studentId = paramId(req, 'studentId');
+    const student = await prisma.student.findUnique({ where: { id: studentId } });
     if (!student) throw new NotFoundError();
     assertTenantMatch(student.academyId, academyId);
 
     const scores = await prisma.performanceScore.findMany({
-      where: { studentId: req.params.studentId, academyId: academyId! },
+      where: { studentId, academyId: academyId! },
       include: {
         attribute: true,
         coach: { include: { user: { select: { firstName: true, lastName: true } } } },
@@ -179,7 +181,7 @@ router.get(
 
     const radar = await prisma.performanceScore.groupBy({
       by: ['attributeId'],
-      where: { studentId: req.params.studentId },
+      where: { studentId },
       _avg: { score: true },
     });
 
@@ -189,7 +191,7 @@ router.get(
 
     const radarData = radar.map((r) => ({
       attribute: attrs.find((a) => a.id === r.attributeId)?.name,
-      score: r._avg.score,
+      score: r._avg?.score ?? 0,
     }));
 
     sendSuccess(res, { scores, radarData });

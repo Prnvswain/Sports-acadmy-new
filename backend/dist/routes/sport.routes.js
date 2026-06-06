@@ -11,6 +11,7 @@ const prisma_1 = require("../lib/prisma");
 const tenantQuery_1 = require("../utils/tenantQuery");
 const tenantQuery_2 = require("../utils/tenantQuery");
 const errors_1 = require("../utils/errors");
+const params_1 = require("../utils/params");
 const router = (0, express_1.Router)();
 const schema = zod_1.z.object({
     name: zod_1.z.string().min(1),
@@ -39,22 +40,22 @@ router.post('/', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
 }));
 router.patch('/:id', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
-    const existing = await prisma_1.prisma.sport.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma_1.prisma.sport.findUnique({ where: { id: (0, params_1.paramId)(req) } });
     if (!existing)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_2.assertTenantMatch)(existing.academyId, academyId);
     const body = schema.partial().parse(req.body);
-    const sport = await prisma_1.prisma.sport.update({ where: { id: req.params.id }, data: body });
+    const sport = await prisma_1.prisma.sport.update({ where: { id: (0, params_1.paramId)(req) }, data: body });
     (0, response_1.sendSuccess)(res, sport);
 }));
 router.delete('/:id', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
-    const existing = await prisma_1.prisma.sport.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma_1.prisma.sport.findUnique({ where: { id: (0, params_1.paramId)(req) } });
     if (!existing)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_2.assertTenantMatch)(existing.academyId, academyId);
     await prisma_1.prisma.sport.update({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
         data: { isActive: false },
     });
     (0, response_1.sendSuccess)(res, null, 'Sport deactivated');

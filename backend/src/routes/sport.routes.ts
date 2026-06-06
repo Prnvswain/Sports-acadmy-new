@@ -10,6 +10,7 @@ import { prisma } from '../lib/prisma';
 import { withTenant } from '../utils/tenantQuery';
 import { assertTenantMatch } from '../utils/tenantQuery';
 import { NotFoundError } from '../utils/errors';
+import { paramId } from '../utils/params';
 
 const router = Router();
 const schema = z.object({
@@ -51,12 +52,12 @@ router.patch(
   '/:id',
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
-    const existing = await prisma.sport.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.sport.findUnique({ where: { id: paramId(req) } });
     if (!existing) throw new NotFoundError();
     assertTenantMatch(existing.academyId, academyId);
 
     const body = schema.partial().parse(req.body);
-    const sport = await prisma.sport.update({ where: { id: req.params.id }, data: body });
+    const sport = await prisma.sport.update({ where: { id: paramId(req) }, data: body });
     sendSuccess(res, sport);
   })
 );
@@ -65,12 +66,12 @@ router.delete(
   '/:id',
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
-    const existing = await prisma.sport.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.sport.findUnique({ where: { id: paramId(req) } });
     if (!existing) throw new NotFoundError();
     assertTenantMatch(existing.academyId, academyId);
 
     await prisma.sport.update({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
       data: { isActive: false },
     });
     sendSuccess(res, null, 'Sport deactivated');

@@ -76,7 +76,8 @@ router.get('/students', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
         ]);
         res.setHeader('Content-Type', 'text/csv');
         res.setHeader('Content-Disposition', 'attachment; filename=students.csv');
-        return res.send(csv);
+        res.send(csv);
+        return;
     }
     (0, response_1.sendSuccess)(res, data);
 }));

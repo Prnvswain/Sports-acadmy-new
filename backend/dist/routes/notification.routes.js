@@ -5,6 +5,7 @@ const asyncHandler_1 = require("../utils/asyncHandler");
 const response_1 = require("../utils/response");
 const auth_1 = require("../middleware/auth");
 const prisma_1 = require("../lib/prisma");
+const params_1 = require("../utils/params");
 const router = (0, express_1.Router)();
 router.use(auth_1.authenticate);
 router.get('/', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
@@ -26,7 +27,7 @@ router.get('/unread-count', (0, asyncHandler_1.asyncHandler)(async (req, res) =>
 router.patch('/:id/read', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { user } = req;
     const notification = await prisma_1.prisma.notification.updateMany({
-        where: { id: req.params.id, userId: user.userId },
+        where: { id: (0, params_1.paramId)(req), userId: user.userId },
         data: { isRead: true },
     });
     (0, response_1.sendSuccess)(res, { updated: notification.count });

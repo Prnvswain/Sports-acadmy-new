@@ -12,6 +12,7 @@ const subscription_service_1 = require("../services/subscription.service");
 const auth_service_1 = require("../services/auth.service");
 const tenantQuery_1 = require("../utils/tenantQuery");
 const errors_1 = require("../utils/errors");
+const params_1 = require("../utils/params");
 const router = (0, express_1.Router)();
 const createAcademySchema = zod_1.z.object({
     name: zod_1.z.string().min(2),
@@ -81,7 +82,7 @@ router.post('/', (0, auth_1.requireRoles)(client_1.UserRole.SUPER_ADMIN), (0, as
 }));
 router.get('/:id', (0, auth_1.requireRoles)(client_1.UserRole.SUPER_ADMIN, client_1.UserRole.ACADEMY_ADMIN), tenant_1.resolveTenant, (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { user, academyId } = req;
-    const id = user.role === client_1.UserRole.SUPER_ADMIN ? req.params.id : academyId;
+    const id = user.role === client_1.UserRole.SUPER_ADMIN ? (0, params_1.paramId)(req) : academyId;
     const academy = await prisma_1.prisma.academy.findUnique({
         where: { id },
         include: { _count: { select: { students: true, coaches: true, batches: true } } },
@@ -93,7 +94,7 @@ router.get('/:id', (0, auth_1.requireRoles)(client_1.UserRole.SUPER_ADMIN, clien
 router.patch('/:id/status', (0, auth_1.requireRoles)(client_1.UserRole.SUPER_ADMIN), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const status = zod_1.z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).parse(req.body.status);
     const academy = await prisma_1.prisma.academy.update({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
         data: { status: status },
     });
     (0, response_1.sendSuccess)(res, academy, 'Academy status updated');
@@ -107,7 +108,7 @@ router.patch('/:id/subscription', (0, auth_1.requireRoles)(client_1.UserRole.SUP
         .parse(req.body);
     const limits = (0, subscription_service_1.getPlanLimits)(body.plan);
     const academy = await prisma_1.prisma.academy.update({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
         data: {
             subscriptionPlan: body.plan,
             maxStudents: limits.maxStudents,

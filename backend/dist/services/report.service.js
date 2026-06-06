@@ -15,6 +15,7 @@ exports.toPDF = toPDF;
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const exceljs_1 = __importDefault(require("exceljs"));
 const sync_1 = require("csv-stringify/sync");
+const client_1 = require("@prisma/client");
 const prisma_1 = require("../lib/prisma");
 const tenantQuery_1 = require("../utils/tenantQuery");
 function dateFilter(startDate, endDate) {
@@ -102,7 +103,7 @@ async function getCoachReport(filters) {
 async function getDueFeesReport(filters) {
     return prisma_1.prisma.feePayment.findMany({
         where: (0, tenantQuery_1.withTenant)(filters.academyId, {
-            status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] },
+            status: { in: [client_1.PaymentStatus.PENDING, client_1.PaymentStatus.OVERDUE, client_1.PaymentStatus.PARTIAL] },
             ...(filters.studentId && { studentId: filters.studentId }),
         }),
         include: {

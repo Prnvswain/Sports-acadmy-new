@@ -4,6 +4,7 @@
   "private": true,
   "description": "Sports Academy Management System — Multi-Tenant SaaS",
   "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "build:backend": "npm run build --prefix backend",
@@ -11,5 +12,16 @@
     "db:generate": "npm run db:generate --prefix backend",
     "db:push": "npm run db:push --prefix backend",
     "db:seed": "npm run db:seed --prefix backend"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.8.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prisma": "^7.8.0"
+  },
+  "allowScripts": {
+    "@prisma/engines@7.8.0": true,
+    "prisma@7.8.0": true
   }
 }

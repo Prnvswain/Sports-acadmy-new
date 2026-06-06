@@ -11,6 +11,7 @@ const coachContext_1 = require("../middleware/coachContext");
 const prisma_1 = require("../lib/prisma");
 const tenantQuery_1 = require("../utils/tenantQuery");
 const errors_1 = require("../utils/errors");
+const params_1 = require("../utils/params");
 const router = (0, express_1.Router)();
 const schema = zod_1.z.object({
     sportId: zod_1.z.string().uuid(),
@@ -71,19 +72,19 @@ router.post('/', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), (0, 
 }));
 router.patch('/:id', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
-    const existing = await prisma_1.prisma.batch.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma_1.prisma.batch.findUnique({ where: { id: (0, params_1.paramId)(req) } });
     if (!existing)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_1.assertTenantMatch)(existing.academyId, academyId);
     const body = schema.partial().parse(req.body);
     const { coachIds, ...data } = body;
     const batch = await prisma_1.prisma.$transaction(async (tx) => {
-        const updated = await tx.batch.update({ where: { id: req.params.id }, data });
+        const updated = await tx.batch.update({ where: { id: (0, params_1.paramId)(req) }, data });
         if (coachIds) {
-            await tx.batchCoach.deleteMany({ where: { batchId: req.params.id } });
+            await tx.batchCoach.deleteMany({ where: { batchId: (0, params_1.paramId)(req) } });
             if (coachIds.length) {
                 await tx.batchCoach.createMany({
-                    data: coachIds.map((coachId) => ({ batchId: req.params.id, coachId })),
+                    data: coachIds.map((coachId) => ({ batchId: (0, params_1.paramId)(req), coachId })),
                 });
             }
         }
@@ -96,7 +97,7 @@ router.post('/:id/assign-student', (0, auth_1.requireRoles)(client_1.UserRole.AC
     const { studentId } = zod_1.z.object({ studentId: zod_1.z.string().uuid() }).parse(req.body);
     const [batch, student] = await Promise.all([
         prisma_1.prisma.batch.findUnique({
-            where: { id: req.params.id },
+            where: { id: (0, params_1.paramId)(req) },
             include: { _count: { select: { students: true } } },
         }),
         prisma_1.prisma.student.findUnique({ where: { id: studentId } }),

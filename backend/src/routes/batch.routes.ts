@@ -10,6 +10,7 @@ import { AuthRequest } from '../types';
 import { prisma } from '../lib/prisma';
 import { withTenant, assertTenantMatch } from '../utils/tenantQuery';
 import { NotFoundError, ValidationError } from '../utils/errors';
+import { paramId } from '../utils/params';
 
 const router = Router();
 const schema = z.object({
@@ -91,7 +92,7 @@ router.patch(
   requireRoles(UserRole.ACADEMY_ADMIN),
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
-    const existing = await prisma.batch.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.batch.findUnique({ where: { id: paramId(req) } });
     if (!existing) throw new NotFoundError();
     assertTenantMatch(existing.academyId, academyId);
 
@@ -99,12 +100,12 @@ router.patch(
     const { coachIds, ...data } = body;
 
     const batch = await prisma.$transaction(async (tx) => {
-      const updated = await tx.batch.update({ where: { id: req.params.id }, data });
+      const updated = await tx.batch.update({ where: { id: paramId(req) }, data });
       if (coachIds) {
-        await tx.batchCoach.deleteMany({ where: { batchId: req.params.id } });
+        await tx.batchCoach.deleteMany({ where: { batchId: paramId(req) } });
         if (coachIds.length) {
           await tx.batchCoach.createMany({
-            data: coachIds.map((coachId) => ({ batchId: req.params.id, coachId })),
+            data: coachIds.map((coachId) => ({ batchId: paramId(req), coachId })),
           });
         }
       }
@@ -124,7 +125,7 @@ router.post(
 
     const [batch, student] = await Promise.all([
       prisma.batch.findUnique({
-        where: { id: req.params.id },
+        where: { id: paramId(req) },
         include: { _count: { select: { students: true } } },
       }),
       prisma.student.findUnique({ where: { id: studentId } }),

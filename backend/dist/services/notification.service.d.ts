@@ -1,4 +1,4 @@
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
 export declare function createNotification(params: {
     academyId?: string | null;
     userId: string;
@@ -15,7 +15,7 @@ export declare function createNotification(params: {
     title: string;
     message: string;
     isRead: boolean;
-    metadata: import("@prisma/client/runtime/client").JsonValue | null;
+    metadata: Prisma.JsonValue | null;
 }>;
 export declare function notifyAcademyAdmins(academyId: string, type: NotificationType, title: string, message: string, metadata?: Record<string, unknown>): Promise<void>;
 //# sourceMappingURL=notification.service.d.ts.map

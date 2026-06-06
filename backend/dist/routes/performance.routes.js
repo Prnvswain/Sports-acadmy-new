@@ -12,6 +12,7 @@ const prisma_1 = require("../lib/prisma");
 const tenantQuery_1 = require("../utils/tenantQuery");
 const notification_service_1 = require("../services/notification.service");
 const errors_1 = require("../utils/errors");
+const params_1 = require("../utils/params");
 const router = (0, express_1.Router)();
 router.use(auth_1.authenticate, tenant_1.resolveTenant, tenant_1.requireTenant, coachContext_1.resolveCoach);
 router.get('/attributes', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN, client_1.UserRole.COACH), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
@@ -61,14 +62,14 @@ router.patch('/attribute-requests/:id', (0, auth_1.requireRoles)(client_1.UserRo
         reviewNote: zod_1.z.string().optional(),
     }).parse(req.body);
     const request = await prisma_1.prisma.performanceAttributeRequest.findUnique({
-        where: { id: req.params.id },
+        where: { id: (0, params_1.paramId)(req) },
     });
     if (!request)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_1.assertTenantMatch)(request.academyId, academyId);
     const updated = await prisma_1.prisma.$transaction(async (tx) => {
         const reqUpdated = await tx.performanceAttributeRequest.update({
-            where: { id: req.params.id },
+            where: { id: (0, params_1.paramId)(req) },
             data: {
                 status: body.status,
                 reviewNote: body.reviewNote,
@@ -117,12 +118,13 @@ router.post('/scores', coachContext_1.coachOnly, (0, asyncHandler_1.asyncHandler
 }));
 router.get('/scores/:studentId', (0, auth_1.requireRoles)(client_1.UserRole.ACADEMY_ADMIN, client_1.UserRole.COACH), (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { academyId } = req;
-    const student = await prisma_1.prisma.student.findUnique({ where: { id: req.params.studentId } });
+    const studentId = (0, params_1.paramId)(req, 'studentId');
+    const student = await prisma_1.prisma.student.findUnique({ where: { id: studentId } });
     if (!student)
         throw new errors_1.NotFoundError();
     (0, tenantQuery_1.assertTenantMatch)(student.academyId, academyId);
     const scores = await prisma_1.prisma.performanceScore.findMany({
-        where: { studentId: req.params.studentId, academyId: academyId },
+        where: { studentId, academyId: academyId },
         include: {
             attribute: true,
             coach: { include: { user: { select: { firstName: true, lastName: true } } } },
@@ -131,7 +133,7 @@ router.get('/scores/:studentId', (0, auth_1.requireRoles)(client_1.UserRole.ACAD
     });
     const radar = await prisma_1.prisma.performanceScore.groupBy({
         by: ['attributeId'],
-        where: { studentId: req.params.studentId },
+        where: { studentId },
         _avg: { score: true },
     });
     const attrs = await prisma_1.prisma.performanceAttribute.findMany({
@@ -139,7 +141,7 @@ router.get('/scores/:studentId', (0, auth_1.requireRoles)(client_1.UserRole.ACAD
     });
     const radarData = radar.map((r) => ({
         attribute: attrs.find((a) => a.id === r.attributeId)?.name,
-        score: r._avg.score,
+        score: r._avg?.score ?? 0,
     }));
     (0, response_1.sendSuccess)(res, { scores, radarData });
 }));

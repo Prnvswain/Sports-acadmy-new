@@ -22,6 +22,8 @@ import reportRoutes from './routes/report.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import settingsRoutes from './routes/settings.routes';
 import importRoutes from './routes/import.routes';
+import auditRoutes from './routes/audit.routes';
+import subscriptionRoutes from './routes/subscription.routes';
 
 const app = express();
 
@@ -58,6 +60,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/import', importRoutes);
+app.use('/api/audit-logs', auditRoutes);
+app.use('/api/subscription', subscriptionRoutes);
 
 app.use(errorHandler);
 

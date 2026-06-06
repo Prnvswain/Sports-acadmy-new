@@ -27,7 +27,7 @@ async function notifyAcademyAdmins(academyId, type, title, message, metadata) {
             type,
             title,
             message,
-            metadata,
+            metadata: metadata,
         })),
     });
 }

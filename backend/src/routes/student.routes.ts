@@ -12,6 +12,7 @@ import { withTenant, assertTenantMatch, getPagination } from '../utils/tenantQue
 import { checkStudentLimit } from '../services/subscription.service';
 import { previewFee } from '../utils/feeCalculator';
 import { NotFoundError } from '../utils/errors';
+import { paramId } from '../utils/params';
 
 const router = Router();
 
@@ -102,7 +103,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
     const student = await prisma.student.findUnique({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
       include: {
         sport: true,
         batch: true,
@@ -127,13 +128,13 @@ router.patch(
   requireRoles(UserRole.ACADEMY_ADMIN),
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
-    const existing = await prisma.student.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.student.findUnique({ where: { id: paramId(req) } });
     if (!existing) throw new NotFoundError();
     assertTenantMatch(existing.academyId, academyId);
 
     const body = createSchema.partial().parse(req.body);
     const student = await prisma.student.update({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
       data: {
         ...body,
         dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : undefined,
@@ -148,12 +149,12 @@ router.delete(
   requireRoles(UserRole.ACADEMY_ADMIN),
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
-    const existing = await prisma.student.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.student.findUnique({ where: { id: paramId(req) } });
     if (!existing) throw new NotFoundError();
     assertTenantMatch(existing.academyId, academyId);
 
     await prisma.student.update({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
       data: { deletedAt: new Date(), isActive: false },
     });
     sendSuccess(res, null, 'Student soft deleted');
@@ -165,13 +166,13 @@ router.post(
   requireRoles(UserRole.ACADEMY_ADMIN),
   asyncHandler(async (req, res) => {
     const { academyId } = req as AuthRequest;
-    const existing = await prisma.student.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.student.findUnique({ where: { id: paramId(req) } });
     if (!existing) throw new NotFoundError();
     assertTenantMatch(existing.academyId, academyId);
     await checkStudentLimit(academyId!);
 
     const student = await prisma.student.update({
-      where: { id: req.params.id },
+      where: { id: paramId(req) },
       data: { deletedAt: null, isActive: true },
     });
     sendSuccess(res, student, 'Student restored');
